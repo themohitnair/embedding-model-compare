@@ -1,0 +1,13 @@
+[project]
+name = "embedding-model-compare"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "matplotlib>=3.10.3",
+    "orjson>=3.10.18",
+    "pandas>=2.3.0",
+    "qdrant-client>=1.14.3",
+    "sentence-transformers>=4.1.0",
+]
