@@ -73,7 +73,126 @@ async def evaluate_model(model_key, model, k=100, score_threshold=0.3):
     return results
 
 
+def plot_separate_topics(all_results):
+    """Create separate plots for each topic showing all models' performance"""
+
+    # Create a directory for individual topic plots
+    import os
+
+    os.makedirs("topic_plots", exist_ok=True)
+
+    for topic in SPECIFIC_TOPICS:
+        fig, axes = plt.subplots(1, len(MODELS), figsize=(20, 5))
+        fig.suptitle(f'Topic Distribution for "{topic}" Across All Models', fontsize=16)
+
+        for idx, (model_key, model_info) in enumerate(MODELS.items()):
+            counter = Counter(all_results[model_key][topic]["retrieved_topics"])
+            labels = list(counter.keys())
+            counts = list(counter.values())
+
+            # Handle case where there's only one model (axes won't be an array)
+            ax = axes[idx] if len(MODELS) > 1 else axes
+
+            ax.bar(range(len(labels)), counts, color=model_info["color"])
+            ax.set_title(
+                f"{model_key.upper()}\n(P:{all_results[model_key][topic]['precision']:.3f}, R:{all_results[model_key][topic]['recall']:.3f})",
+                fontsize=10,
+            )
+            ax.set_xticks(range(len(labels)))
+            ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
+            ax.set_ylabel("Count")
+
+            # Add total retrieved count as text
+            ax.text(
+                0.02,
+                0.98,
+                f"Total: {all_results[model_key][topic]['total_retrieved']}",
+                transform=ax.transAxes,
+                verticalalignment="top",
+                fontsize=8,
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            )
+
+        plt.tight_layout()
+
+        # Safe filename (replace spaces and special characters)
+        safe_topic_name = topic.replace(" ", "_").replace("/", "_")
+        plt.savefig(
+            f"topic_plots/{safe_topic_name}_comparison.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.close()
+
+        print(f"✅ Saved plot for '{topic}'")
+
+
+def plot_performance_comparison(all_results):
+    """Create performance comparison plots for precision and recall"""
+
+    # Prepare data for plotting
+    topics = SPECIFIC_TOPICS
+    models = list(MODELS.keys())
+
+    precision_data = []
+    recall_data = []
+
+    for model_key in models:
+        model_precisions = [
+            all_results[model_key][topic]["precision"] for topic in topics
+        ]
+        model_recalls = [all_results[model_key][topic]["recall"] for topic in topics]
+        precision_data.append(model_precisions)
+        recall_data.append(model_recalls)
+
+    # Create precision comparison plot
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+    x = np.arange(len(topics))
+    width = 0.1
+
+    for i, (model_key, model_info) in enumerate(MODELS.items()):
+        offset = (i - len(MODELS) / 2) * width
+        ax1.bar(
+            x + offset,
+            precision_data[i],
+            width,
+            label=model_key.upper(),
+            color=model_info["color"],
+        )
+        ax2.bar(
+            x + offset,
+            recall_data[i],
+            width,
+            label=model_key.upper(),
+            color=model_info["color"],
+        )
+
+    ax1.set_title("Precision Comparison Across Topics")
+    ax1.set_xlabel("Topics")
+    ax1.set_ylabel("Precision")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(topics, rotation=45, ha="right")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+
+    ax2.set_title("Recall Comparison Across Topics")
+    ax2.set_xlabel("Topics")
+    ax2.set_ylabel("Recall")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(topics, rotation=45, ha="right")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig("performance_comparison.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+    print("✅ Saved performance comparison plot")
+
+
 def plot_all_models_comparison(all_results):
+    """Original comprehensive plot function"""
     fig, axes = plt.subplots(
         len(MODELS), len(SPECIFIC_TOPICS), figsize=(25, 4 * len(MODELS))
     )
@@ -192,6 +311,12 @@ async def main(k=100, score_threshold=0.3):
     print("\n📊 Generating comprehensive comparison charts...")
     plot_all_models_comparison(all_results)
 
+    print("\n📊 Generating separate topic plots...")
+    plot_separate_topics(all_results)
+
+    print("\n📊 Generating performance comparison plots...")
+    plot_performance_comparison(all_results)
+
     print("\n📋 Detailed Results:")
     detailed_df = create_comprehensive_table(all_results)
     print(detailed_df.to_string(index=False, float_format="%.3f"))
@@ -208,7 +333,8 @@ async def main(k=100, score_threshold=0.3):
 
     detailed_df.to_csv("detailed_model_comparison.csv", index=False)
     summary_df.to_csv("model_summary.csv", index=False)
-    print("\n💾 Results saved to CSV files and all_models_comparison.png")
+    print("\n💾 Results saved to CSV files and various visualization plots")
+    print("📁 Individual topic plots saved in 'topic_plots/' directory")
 
 
 if __name__ == "__main__":
