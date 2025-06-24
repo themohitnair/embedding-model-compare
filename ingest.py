@@ -7,6 +7,9 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import VectorParams, Distance, PointStruct
 import openai
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 client = AsyncQdrantClient(host="localhost", port=6333)
 
